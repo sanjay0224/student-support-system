@@ -2,26 +2,35 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 let pool = null;
-let useMock = false;
+// Auto-enable In-Memory mode if DB_HOST is localhost/empty or in serverless without remote MySQL
+let useMock = !process.env.DB_HOST || process.env.DB_HOST === 'localhost' || !process.env.DB_PASSWORD;
 
 const initPool = () => {
-  if (!pool) {
-    pool = mysql.createPool({
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT) || 3306,
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'student_support_db',
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
-      timezone: '+00:00',
-    });
+  if (!pool && !useMock) {
+    try {
+      pool = mysql.createPool({
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT) || 3306,
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASSWORD || '',
+        database: process.env.DB_NAME || 'student_support_db',
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
+        timezone: '+00:00',
+      });
+    } catch (e) {
+      useMock = true;
+    }
   }
   return pool;
 };
 
 const testConnection = async () => {
+  if (useMock) {
+    console.log('📘 In-Memory Mode active (Full seed data loaded)');
+    return false;
+  }
   try {
     const p = initPool();
     const conn = await p.getConnection();
