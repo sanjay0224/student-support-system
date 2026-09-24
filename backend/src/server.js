@@ -8,12 +8,11 @@ const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://localhost:3001',
-  ],
+  origin: '*',
   credentials: true,
 }));
 app.use(express.json());
@@ -34,15 +33,18 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-const start = async () => {
-  await testConnection();
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📘 Mode: ${require('./config/database').isMock() ? 'In-Memory (No MySQL needed)' : 'MySQL'}`);
+if (require.main === module) {
+  const start = async () => {
+    await testConnection();
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`📘 Mode: ${require('./config/database').isMock() ? 'In-Memory (No MySQL needed)' : 'MySQL'}`);
+    });
+  };
+  start().catch(err => {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
   });
-};
+}
 
-start().catch(err => {
-  console.error('❌ Failed to start server:', err);
-  process.exit(1);
-});
+module.exports = app;
